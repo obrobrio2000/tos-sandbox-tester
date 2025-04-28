@@ -63,7 +63,7 @@ export async function submitTextForTranslation(
   
   console.log('Translation request response:', response.data);
 
-  return response.data[0].id_content; // id_request returned by TOS
+  return response.data[0].id; // id_request returned by TOS
 }
 
 export async function triggerSandboxDelivery(ids: number[], retries = 3, delayMs = 30000) {

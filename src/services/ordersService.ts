@@ -113,19 +113,33 @@ export async function setOrderSubmitted(orderId: number) {
   await pool.query('UPDATE orders SET submitted_at = NOW() WHERE id = ?', [orderId]);
 }
 
-export async function getInProgressTexts(): Promise<Text[]> {
-  console.log('Fetching texts with status "submitted" or "in_progress"');
-  const [rows] = await pool.query<RowDataPacket[]>(
-    'SELECT * FROM texts WHERE status IN ("submitted","in_progress") LIMIT 100',
-  );
-  return (rows as any[]).map((t) => ({
-    id: t.id,
-    orderId: t.order_id,
-    content: t.content,
-    translatedContent: t.translated_content,
-    tosRequestId: t.tos_request_id,
-    status: t.status,
-    createdAt: t.created_at,
-    updatedAt: t.updated_at,
-  }));
+export async function getSubmittedOrInProgressTexts(
+  pageSize: number = 100
+): Promise<Text[]> {
+  let offset = 0;
+  let rows: RowDataPacket[] = [];
+  do {
+    console.log(
+      `Fetching texts with status "submitted" or "in_progress", offset ${offset}, limit ${pageSize}`
+    );
+    const [fetched] = await pool.query<RowDataPacket[]>(
+      'SELECT * FROM texts WHERE status IN (?,?) ORDER BY id LIMIT ? OFFSET ?',
+      ['submitted', 'in_progress', pageSize, offset]
+    );
+    rows = fetched;
+    if ((rows as any[]).length > 0) {
+      return (rows as any[]).map((t) => ({
+        id: t.id,
+        orderId: t.order_id,
+        content: t.content,
+        translatedContent: t.translated_content,
+        tosRequestId: t.tos_request_id,
+        status: t.status,
+        createdAt: t.created_at,
+        updatedAt: t.updated_at,
+      }));
+    }
+    offset += pageSize;
+  } while ((rows as any[]).length === pageSize);
+  return [];
 }

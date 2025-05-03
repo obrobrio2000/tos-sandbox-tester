@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# demo.sh – Translation‑Orders‑Service smoke test
 set -euo pipefail
 
 BASE_URL=${BASE_URL:-http://localhost:3000}
@@ -13,7 +12,7 @@ echo "🆕 Creating order…"
 
 ORDER_JSON=$(curl -s -X POST "$BASE_URL/orders" \
   -H 'Content-Type: application/json' \
-  -d "{\"name\":\"Demo $(date +%T)\",\"sourceLang\":\"$SRC_LANG\",\"targetLang\":\"$DST_LANG\"}")
+  -d "{\"name\":\"Test $(date +%T)\",\"sourceLang\":\"$SRC_LANG\",\"targetLang\":\"$DST_LANG\"}")
 ORDER_ID=$(echo "$ORDER_JSON" | jq -r '.id')
 echo "✅ Order id=$ORDER_ID"
 
@@ -30,20 +29,19 @@ echo "🚀 Submitting…"
 curl -s -X POST "$BASE_URL/orders/$ORDER_ID/submit" > /dev/null
 echo "✅ Submitted"
 
-echo -n "⏳ Waiting for delivery"
+echo -n "⏳ Waiting for delivery"; echo
 ELAPSED=0
 while (( ELAPSED < MAX_WAIT )); do
   ORDER=$(curl -s "$BASE_URL/orders/$ORDER_ID")
   DELIVERED=$(echo "$ORDER" | jq '[.texts[].status]|all(.=="delivered")')
   if [[ "$DELIVERED" == "true" ]]; then
-    echo    # break line
-    echo "🎉 Delivered!"
+    echo; echo "🎉 Delivered!"
     break
   fi
-  echo -n " ("; echo "$ORDER" | jq -r '[.texts[].status]|join(",")'; echo -n ")"
+  STATUSES=$(echo "$ORDER" | jq -r '[.texts[].status]|join(",")')
+  echo -n "($STATUSES)"; echo
   sleep "$POLL_INTERVAL"
   (( ELAPSED += POLL_INTERVAL ))
-  echo -n "."
 done
 
 if (( ELAPSED >= MAX_WAIT )); then
@@ -52,6 +50,5 @@ if (( ELAPSED >= MAX_WAIT )); then
   exit 1
 fi
 
-echo
-echo "📦 Final payload:"
-echo "$ORDER" | jq '.order, .texts[] | {id,content,translatedContent,status}'
+echo; echo "📦 Final payload:"
+echo "$ORDER" | jq '.texts[] | select(.content != null) | {id,content,translatedContent,status}'

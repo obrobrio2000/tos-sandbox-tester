@@ -18,24 +18,17 @@ export async function pollOnce() {
   const ready = await dbReady();
   if (!ready) return; // skip if DB still booting
 
-  const texts = await orderService.getInProgressTexts();
+  const texts = await orderService.getSubmittedOrInProgressTexts();
   if (!texts.length) return;
 
-  // TranslationOS lets us query by either id_request or id_content.
-  // If tos_request_id is null (we’ve seen this happen when the API returns 500
-  // and our fast‑track fails) we fall back to id_content.
   const idsByRequest = texts
     .map((t) => t.tosRequestId)
     .filter((n): n is number => typeof n === 'number');
-  const idsByContent = texts
-    .filter((t) => t.tosRequestId == null)
-    .map((t) => t.id); // our local text.id == id_content we sent
 
-  if (!idsByRequest.length && !idsByContent.length) return;
+  if (!idsByRequest.length) return;
 
   const body: any = {};
   if (idsByRequest.length) body.id_request = idsByRequest;
-  if (idsByContent.length) body.id_content = idsByContent;
 
   const statuses = await tos.getStatus(body);
   for (const st of statuses) {

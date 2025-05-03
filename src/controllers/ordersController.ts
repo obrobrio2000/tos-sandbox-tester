@@ -55,33 +55,20 @@ export async function submitOrder(req: Request, res: Response, next: NextFunctio
   try {
     const orderId = Number(req.params.orderId);
     const { order, texts } = await orderService.getOrderWithTexts(orderId);
-    if (order.submittedAt) {
-      return res.status(400).json({ message: 'Order already submitted' });
-    }
-    if (!texts.length) {
-      return res.status(400).json({ message: 'No texts to submit' });
-    }
+    if (order.submittedAt) return res.status(400).json({ message: 'Order already submitted' });
+    if (!texts.length)    return res.status(400).json({ message: 'No texts to submit' });
 
-    // submit all texts and collect TOS request IDs
-    const idRequests: number[] = [];
-    await Promise.all(
-      texts.map(async (text) => {
-        const idRequest = await tos.submitTextForTranslation(
-          text.id,
-          text.content,
-          order.sourceLang,
-          order.targetLang,
+    const idRequests = await Promise.all(
+      texts.map(async (t) => {
+        const idReq = await tos.submitTextForTranslation(
+          t.id, t.content, order.sourceLang, order.targetLang,
         );
-        idRequests.push(idRequest);
-        await orderService.markTextSubmitted(text.id, idRequest);
+        await orderService.markTextSubmitted(t.id, idReq);
+        return idReq;
       }),
     );
 
     await orderService.setOrderSubmitted(orderId);
-
-    // for sandbox we can trigger delivery instead of waiting
-    await tos.triggerSandboxDelivery(idRequests);
-
     console.log(`Order submitted with IDs: ${idRequests.join(', ')}`);
 
     res.status(200).json({ message: 'Order submitted' });

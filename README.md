@@ -15,9 +15,13 @@ This project implements a RESTful backend in Node.js (TypeScript) that lets you 
 * Scales to dozens of concurrent requests – Express is non‑blocking and DB writes are batched; MySQL pool prevents connection exhaustion.
 * Queue‑friendly design – if you need even more throughput, wire BullMQ/Redis inside `jobs/` without touching the HTTP layer.
 
-## Quick start (local)
+## Usage
 
 ```bash
 # clone and cd
-docker compose up --build
-# The API will be available on http://localhost:3000/
+npm install # install dependencies
+docker compose up --build -d # build and start containers
+chmod +x test.sh # give appropriate permissions to test script
+./test.sh # run test script
+docker compose down -v # stop containers and clean volumes
+```

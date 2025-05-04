@@ -51,4 +51,4 @@ if (( ELAPSED >= MAX_WAIT )); then
 fi
 
 echo; echo "📦 Final payload:"
-echo "$ORDER" | jq '.texts[] | select(.content != null) | {id,content,translatedContent,status}'
+echo "$ORDER" | jq '.texts[] | select(.content != null) | {id,orderId,content,translatedContent,status}'

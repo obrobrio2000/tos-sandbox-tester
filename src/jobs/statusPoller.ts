@@ -18,7 +18,7 @@ export async function pollOnce() {
   const ready = await dbReady();
   if (!ready) return; // skip if DB still booting
 
-  const texts = await orderService.getSubmittedOrInProgressTexts();
+  const texts = await orderService.getUndeliveredTexts();
   if (!texts.length) return;
 
   const idsByRequest = texts
@@ -34,17 +34,11 @@ export async function pollOnce() {
   for (const st of statuses) {
     const text = texts.find((t) => t.tosRequestId === st.id);
     if (!text) continue;
-
-    const stStatus = (st.status as string).toLowerCase();
-    if (stStatus.includes('in progress') && text.status !== 'in_progress') {
-      await orderService.updateTextStatus(text.id, 'in_progress');
-    } else if (stStatus.includes('delivered') || stStatus.includes('completed') || stStatus.includes('succeeded')) {
-      await orderService.updateTextStatus(text.id, 'delivered', st.translated_content);
-    } else if (stStatus.includes('failed')) {
-      await orderService.updateTextStatus(text.id, 'failed');
-    } else if (stStatus.includes('pending')) {
-      await orderService.updateTextStatus(text.id, 'pending');
-    }
+    // use the api status verbatim (lowercased, spaces → underscores)
+    const rawStatus = (st.status as string).toLowerCase();
+    const normalizedStatus = rawStatus.replace(/ /g, '_');
+    // pass translated_content if present (will be undefined otherwise)
+    await orderService.updateTextStatus(text.id, normalizedStatus, st.translated_content);
   }
 }
 

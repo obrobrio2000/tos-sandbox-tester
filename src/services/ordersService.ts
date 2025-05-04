@@ -113,18 +113,18 @@ export async function setOrderSubmitted(orderId: number) {
   await pool.query('UPDATE orders SET submitted_at = NOW() WHERE id = ?', [orderId]);
 }
 
-export async function getSubmittedOrInProgressTexts(
+export async function getUndeliveredTexts(
   pageSize: number = 100
 ): Promise<Text[]> {
   let offset = 0;
   let rows: RowDataPacket[] = [];
   do {
     console.log(
-      `Fetching texts with status "submitted" or "in_progress", offset ${offset}, limit ${pageSize}`
+      `Fetching texts with status != "delivered", offset ${offset}, limit ${pageSize}`
     );
     const [fetched] = await pool.query<RowDataPacket[]>(
-      'SELECT * FROM texts WHERE status IN (?,?) ORDER BY id LIMIT ? OFFSET ?',
-      ['submitted', 'in_progress', pageSize, offset]
+      'SELECT * FROM texts WHERE status <> ? ORDER BY id LIMIT ? OFFSET ?',
+      ['delivered', pageSize, offset]
     );
     rows = fetched;
     if ((rows as any[]).length > 0) {

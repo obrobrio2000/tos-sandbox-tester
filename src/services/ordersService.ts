@@ -75,7 +75,7 @@ export async function getOrderWithTexts(orderId: number): Promise<{ order: Order
   const order = mapDbOrder(orders[0]);
 
   const [texts] = await pool.query<RowDataPacket[]>('SELECT * FROM texts WHERE order_id = ?', [orderId]);
-  // map snake_case columns in texts too
+  
   const mappedTexts: Text[] = (texts as any[]).map((t) => ({
     id: t.id,
     orderId: t.order_id,

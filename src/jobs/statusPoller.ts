@@ -34,10 +34,10 @@ export async function pollOnce() {
   for (const st of statuses) {
     const text = texts.find((t) => t.tosRequestId === st.id);
     if (!text) continue;
-    // use the api status verbatim (lowercased, spaces → underscores)
+    // Use the api status verbatim (lowercased, spaces → underscores)
     const rawStatus = (st.status as string).toLowerCase();
     const normalizedStatus = rawStatus.replace(/ /g, '_');
-    // pass translated_content if present (will be undefined otherwise)
+    // Pass translated_content if present (will be undefined otherwise)
     await orderService.updateTextStatus(text.id, normalizedStatus, st.translated_content);
   }
 }

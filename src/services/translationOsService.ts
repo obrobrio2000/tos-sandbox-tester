@@ -1,14 +1,11 @@
 import axios from 'axios';
-import dotenv from 'dotenv';
-
-dotenv.config();
 
 const apiKey = process.env.TOS_API_KEY;
-const baseURL = process.env.TOS_BASE_URL;
-const IS_SANDBOX = /sandbox/.test(baseURL ?? '');
+const baseURL = process.env.TOS_BASE_SANDBOX_URL;
+const IS_SANDBOX = process.env.TOS_SANDBOX === 'true' || /sandbox/.test(baseURL ?? '');
 
 const client = axios.create({
-  baseURL,
+  baseURL: baseURL,
   headers: {
     'x-api-key': apiKey,
     'Content-Type': 'application/json',
@@ -21,7 +18,9 @@ export async function submitTextForTranslation(
   sourceLang: string,
   targetLang: string,
 ): Promise<number> {
-  const payload = [
+  const callbackUrl = `${process.env.URL}/translation/delivery` || null;
+
+  const payload: any = [
     {
       id_content: idContent,
       content,
@@ -29,6 +28,7 @@ export async function submitTextForTranslation(
       source_language: sourceLang,
       target_languages: [targetLang],
       service_type: 'premium',
+      callback_url: callbackUrl,
     },
   ];
 

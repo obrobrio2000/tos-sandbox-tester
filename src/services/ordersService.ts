@@ -100,11 +100,11 @@ export async function markTextSubmitted(id: number, tosRequestId: number) {
   );
 }
 
-export async function updateTextStatus(id: number, status: string, translatedContent?: string) {
+export async function updateTextStatus(id: number | null, status: string, translatedContent: string | null) {
   console.log(`Updating text ${id} status to ${status}`);
   await pool.query(
-    'UPDATE texts SET status = ?, translated_content = IFNULL(?, translated_content), updated_at = NOW() WHERE id = ?',
-    [status, translatedContent ?? null, id],
+    'UPDATE texts SET status = ?, translated_content = IFNULL(?, translated_content), updated_at = NOW() WHERE tos_request_id = ? OR id = ?',
+    [status, translatedContent ?? null, id, id],
   );
 }
 
@@ -113,7 +113,7 @@ export async function setOrderSubmitted(orderId: number) {
   await pool.query('UPDATE orders SET submitted_at = NOW() WHERE id = ?', [orderId]);
 }
 
-export async function getUndeliveredTexts(
+export async function getActiveTexts(
   pageSize: number = 100
 ): Promise<Text[]> {
   let offset = 0;

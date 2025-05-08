@@ -1,6 +1,7 @@
 import * as orderService from '../services/ordersService';
 import * as tos from '../services/translationOsService';
 import { pool } from '../services/db';
+import axios from 'axios';
 
 const POLLING_INTERVAL = Number(process.env.POLLING_INTERVAL_SEC || 60) * 1000;
 const FIRST_DELAY = 5000; // wait 5s so MySQL container is up
@@ -14,11 +15,21 @@ async function dbReady(): Promise<boolean> {
   }
 }
 
+export async function fetchTranslatedContentFromUrl(url: string): Promise<string> {
+  try {
+    const response = await axios.get(url);
+    return response.data;
+  } catch (error) {
+    console.error(`Error fetching translated content from ${url}:`, error);
+    throw error; // Re-throw to be caught by the caller
+  }
+}
+
 export async function pollOnce() {
   const ready = await dbReady();
   if (!ready) return; // skip if DB still booting
 
-  const texts = await orderService.getUndeliveredTexts();
+  const texts = await orderService.getActiveTexts();
   if (!texts.length) return;
 
   const idsByRequest = texts
@@ -34,11 +45,33 @@ export async function pollOnce() {
   for (const st of statuses) {
     const text = texts.find((t) => t.tosRequestId === st.id);
     if (!text) continue;
-    // Use the api status verbatim (lowercased, spaces → underscores)
+
     const rawStatus = (st.status as string).toLowerCase();
     const normalizedStatus = rawStatus.replace(/ /g, '_');
-    // Pass translated_content if present (will be undefined otherwise)
-    await orderService.updateTextStatus(text.id, normalizedStatus, st.translated_content);
+    
+    let contentToStore: string | null = null;
+
+    if (st.translated_content) {
+      contentToStore = st.translated_content; // Direct content from API status, if any
+      await orderService.updateTextStatus(text.tosRequestId, 'delivered', contentToStore);
+      continue;
+    }
+    
+    if (st.translated_content_url) {
+      try {
+        console.log(`Fetching translated content for text ${text.id} from URL: ${st.translated_content_url}`);
+        contentToStore = await fetchTranslatedContentFromUrl(st.translated_content_url);
+        console.log(`Successfully fetched translated content for text ${text.id}. Length: ${contentToStore?.length}`);
+        await orderService.updateTextStatus(text.tosRequestId, 'delivered', contentToStore);
+        continue;
+      } catch (fetchError) {
+        // Error is already logged by fetchTranslatedContentFromUrl
+        console.error(`Failed to fetch translated content for text ${text.id} from URL ${st.translated_content_url}. Status will be updated to ${normalizedStatus}, but content might be missing or based on direct API field.`);
+        // contentToStore remains st.translated_content (if any) or undefined
+      }
+    }
+    
+    await orderService.updateTextStatus(text.tosRequestId, normalizedStatus, contentToStore);
   }
 }
 
